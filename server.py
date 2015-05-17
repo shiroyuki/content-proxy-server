@@ -32,10 +32,13 @@ def main():
     if arguments:
         resource_path = arguments[0]
 
+    #ip   = os.environ['OPENSHIFT_PYTHON_IP']       if 'OPENSHIFT_PYTHON_IP'   in os.environ else '0.0.0.0'
+    port = int(os.environ['OPENSHIFT_PYTHON_PORT'] if 'OPENSHIFT_PYTHON_PORT' in os.environ else 9500)
+
     options = {
         'host':     '0.0.0.0',
         'debug':    debug_mode_enabled,
-        'port':     9500,
+        'port':     port,
         'threaded': True,
     }
 

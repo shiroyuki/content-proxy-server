@@ -4,29 +4,52 @@ import math
 import os
 import re
 from StringIO import StringIO
+import sys
 from time     import time
 
 from flask import Flask, make_response, render_template
 from PIL   import Image
 import requests
 
-app_name           = 'imgproxy'
+FLAG_DEBUG_MODE = '--debug'
+
+arguments = sys.argv[1:]
+
+app_name           = 'http-image-optimizer'
 image_quality      = 80
 disk_cache_enabled = True
+debug_mode_enabled = FLAG_DEBUG_MODE in sys.argv
+resource_path      = None
 
 remote_cache_map      = {}
 remote_cache_lifespan = 3600 # in seconds
 
 app = Flask(__name__)
 
+def main():
+    arguments.remove(FLAG_DEBUG_MODE)
+
+    if arguments:
+        resource_path = arguments[0]
+
+    options = {
+        'host':     '0.0.0.0',
+        'debug':    debug_mode_enabled,
+        'port':     9500,
+        'threaded': True,
+    }
+
+    app.run(**options)
+
 def _reference_path(main_node, *nodes):
     """ File Path """
+    if not resource_path:
+        raise RuntimeError('The reference resource path is not defined.')
+
     if main_node[0] == '/':
         return os.path.join(main_node, *nodes)
 
-    base_path = os.path.dirname(__file__)
-
-    return os.path.abspath(os.path.join(base_path, '..', 'secure', main_node, *nodes))
+    return os.path.abspath(os.path.join(resource_path, main_node, *nodes))
 
 def _local_path(main_node, *nodes):
     """ File Path """
@@ -194,11 +217,4 @@ def index(width, height, source_hash):
     return resp
 
 if __name__ == "__main__":
-    options = {
-        'host':     '0.0.0.0',
-        'debug':    True,
-        'port':     9500,
-        'threaded': True,
-    }
-
-    app.run(**options)
+    main()

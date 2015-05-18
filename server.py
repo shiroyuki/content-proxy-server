@@ -27,6 +27,8 @@ remote_cache_lifespan = 3600 # in seconds
 app = Flask(__name__)
 
 def main():
+    global resource_path
+
     try:
         arguments.remove(FLAG_DEBUG_MODE)
     except ValueError as e:
@@ -49,6 +51,8 @@ def main():
 
 def _reference_path(main_node, *nodes):
     """ File Path """
+    global resource_path
+
     if not resource_path:
         raise RuntimeError('The reference resource path is not defined.')
 

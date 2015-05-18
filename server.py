@@ -27,7 +27,10 @@ remote_cache_lifespan = 3600 # in seconds
 app = Flask(__name__)
 
 def main():
-    arguments.remove(FLAG_DEBUG_MODE)
+    try:
+        arguments.remove(FLAG_DEBUG_MODE)
+    except ValueError as e:
+        pass
 
     if arguments:
         resource_path = arguments[0]

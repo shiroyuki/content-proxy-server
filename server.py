@@ -203,12 +203,17 @@ def index(width, height, source_hash):
     width  = None if width.lower()  == 'auto' else int(width)
     height = None if height.lower() == 'auto' else int(height)
 
+    app.logger.debug('Requesting {}'.format(original_source))
+
     if re.search('^https?://', original_source):
         # Deal with remote images.
-        #raise NotImplemented('Not yet implemented')
+        app.logger.debug('Dealing with remote resource')
+
         cache_path = _process_remote_image(original_source, width, height)
     else:
         # Deal with local images.
+        app.logger.debug('Dealing with local resource')
+
         reference_path = _reference_path(original_source[1:])
         cache_path     = _process_local_image(reference_path, width, height)
 

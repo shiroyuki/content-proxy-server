@@ -1,3 +1,4 @@
+import argparse
 from base64   import b64decode
 from hashlib  import sha1, md5
 import math
@@ -5,20 +6,21 @@ import os
 import re
 from StringIO import StringIO
 import sys
-from time     import time
+import time
 
-from flask import Flask, make_response, render_template
+from flask import Flask, request, make_response, render_template
 from PIL   import Image
 import requests
 
 FLAG_DEBUG_MODE = '--debug'
 
-arguments = sys.argv[1:]
+arg_parser = argparse.ArgumentParser(__package__)
+arg_parser.add_argument('-d', '--debug', action='store_true', default=False, help='The debugging mode')
+arg_parser.add_argument('-r', '--resource', help='The path to presumably local resources')
 
 app_name           = 'http-image-optimizer'
 image_quality      = 80
 disk_cache_enabled = True
-debug_mode_enabled = FLAG_DEBUG_MODE in sys.argv
 resource_path      = None
 
 remote_cache_map      = {}
@@ -27,17 +29,18 @@ remote_cache_lifespan = 3600 # in seconds
 app = Flask(__name__)
 
 def main():
-    arguments.remove(FLAG_DEBUG_MODE)
+    global resource_path
 
-    if arguments:
-        resource_path = arguments[0]
+    args = arg_parser.parse_args()
 
-    #ip   = os.environ['OPENSHIFT_PYTHON_IP']       if 'OPENSHIFT_PYTHON_IP'   in os.environ else '0.0.0.0'
-    port = int(os.environ['OPENSHIFT_PYTHON_PORT'] if 'OPENSHIFT_PYTHON_PORT' in os.environ else 9500)
+    if args.resource:
+        resource_path = args.resource
+
+    port = 9500
 
     options = {
         'host':     '0.0.0.0',
-        'debug':    debug_mode_enabled,
+        'debug':    args.debug,
         'port':     port,
         'threaded': True,
     }
@@ -46,6 +49,8 @@ def main():
 
 def _reference_path(main_node, *nodes):
     """ File Path """
+    global resource_path
+
     if not resource_path:
         raise RuntimeError('The reference resource path is not defined.')
 
@@ -92,19 +97,25 @@ def _process_remote_image(url, expected_width, expected_height):
     if _has_cache(write_path):
         return write_path
 
-    current_time = time()
+    current_time = time.time()
     remote_cache = remote_cache_map[url] if url in remote_cache_map else None
 
     if not remote_cache or remote_cache['expired_at'] < current_time:
-        response = requests.get(url)
+        retry_count = 5
+        while retry_count:
+            response = requests.get(url)
 
-        if response.status_code != requests.codes.ok:
-            raise RuntimeError('Failed to retrieve the image')
+            if response.status_code != requests.codes.ok:
+                raise RuntimeError('Failed to retrieve the image')
 
-        remote_cache_map[url] = {
-            'content':    response.content,
-            'expired_at': current_time + remote_cache_lifespan
-        }
+            remote_cache_map[url] = {
+                'content':    response.content,
+                'expired_at': current_time + remote_cache_lifespan
+            }
+
+            retry_count -= 1
+
+            time.sleep(1)
 
     image_buffer = StringIO(remote_cache_map[url]['content'])
 
@@ -215,9 +226,20 @@ def index(width, height, source_hash):
         content = f.read()
 
     resp = make_response(content, 200)
-    resp.headers['Content-Type'] = 'image/jpeg'
+    resp.headers['Content-Type']  = 'image/jpeg'
 
     return resp
+
+@app.after_request
+def intercept_header(response):
+    expiration_time = 31536000
+    expiration_date = time.strftime('%a, %d %b %Y %H:%M:%S %Z', time.gmtime(time.time() + expiration_time))
+
+    response.cache_control.public  = True
+    response.cache_control.max_age = expiration_time
+    response.cache_control.expires = expiration_date
+
+    return response
 
 if __name__ == "__main__":
     main()

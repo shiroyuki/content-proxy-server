@@ -16,7 +16,7 @@ FLAG_DEBUG_MODE = '--debug'
 
 arg_parser = argparse.ArgumentParser(__package__)
 arg_parser.add_argument('-d', '--debug', action='store_true', default=False, help='The debugging mode')
-arg_parser.add_argument('-r', '--resource', help='The path to presumably local resources')
+arg_parser.add_argument('resource', help='The path to presumably local resources')
 
 app_name           = 'http-image-optimizer'
 image_quality      = 80

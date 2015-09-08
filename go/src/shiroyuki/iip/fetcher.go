@@ -2,11 +2,12 @@ package iip
 
 import (
     "fmt"
-    "archive/zip"
     "bytes"
+    "compress/gzip"
     "crypto/md5"
     "encoding/json"
     "hash"
+    "io"
     "io/ioutil"
     "net/http"
     "os"
@@ -62,7 +63,7 @@ func (self *GenericCacheDriver) initialize() {
 func (self *GenericCacheDriver) Load(Key string) []byte {
     self.initialize()
 
-    actualPath := filepath.Join(self.basePath, Key)
+    actualPath   := filepath.Join(self.basePath, Key)
     content, err := ioutil.ReadFile(actualPath)
 
     log.Println("Reading from:", actualPath)
@@ -71,7 +72,26 @@ func (self *GenericCacheDriver) Load(Key string) []byte {
         return nil
     }
 
-    return content
+    if !self.Compressed {
+        log.Println("Read (uncompressed)")
+        return content
+    }
+
+    readingB := new(bytes.Buffer)
+    writingB := new(bytes.Buffer)
+
+    readingB.Write(content)
+
+    r, _ := gzip.NewReader(readingB)
+
+    defer r.Close()
+
+    io.Copy(writingB, r)
+    log.Println("Read (compressed)")
+
+    //ioutil.WriteFile("sample.jpg", writingB.Bytes(), 0644)
+
+    return writingB.Bytes()
 }
 
 func (self *GenericCacheDriver) Save(Key string, Content []byte) {
@@ -81,23 +101,21 @@ func (self *GenericCacheDriver) Save(Key string, Content []byte) {
 
     log.Println("Writing to:", actualPath)
 
-    if (!self.Compressed) {
+    if !self.Compressed {
         ioutil.WriteFile(actualPath, Content, 0644)
         log.Println("Save (uncompressed)")
         return
     }
 
-    log.Println("Compression enabled")
-
     // Compress the data into the buffer.
-    ob    := new(bytes.Buffer)
-    w     := zip.NewWriter(ob)
-    ib, _ := w.Create("image")
+    b := new(bytes.Buffer)
+    w := gzip.NewWriter(b)
 
-    ib.Write(Content)
-    w.Close()
+    defer w.Close()
 
-    ioutil.WriteFile(actualPath, ob.Bytes(), 0644)
+    w.Write(Content)
+
+    ioutil.WriteFile(actualPath, b.Bytes(), 0644)
     log.Println("Save (compressed)")
 }
 
@@ -114,6 +132,13 @@ func (self *Fetcher) Fetch(url string) ([]byte, error) {
     log.Printf("Fetching the data from: %s\n", url)
     log.Printf("Cache Key: %s\n", key)
 
+    content := self.FileStorage.Load(key)
+
+    if content != nil {
+        log.Println("Cache: Hit")
+        return content, nil
+    }
+
     content, contentType, contentLength, err := self.request(url)
 
     if err != nil {
@@ -122,6 +147,8 @@ func (self *Fetcher) Fetch(url string) ([]byte, error) {
 
     self.FileStorage.Save(key, content)
     self.saveMetadata(key, url, contentType, contentLength)
+
+    log.Println("Cache: Missed")
 
     return content, nil
 }

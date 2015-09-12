@@ -1,0 +1,10 @@
+#!/usr/bin/env python
+
+import base64
+
+source_url = "https://farm4.staticflickr.com/3930/15247727947_e3de85030a_k_d.jpg"
+final_url  = "/{source}/".format(
+    source = base64.b64encode(source_url)
+)
+
+print("Sample URL: {}".format(final_url))

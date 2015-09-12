@@ -1,142 +1,54 @@
 package iip
 
 import (
-    "fmt"
-    "bytes"
-    "compress/gzip"
-    "crypto/md5"
     "encoding/json"
-    "hash"
-    "io"
     "io/ioutil"
     "net/http"
-    "os"
     "log"
-    "path/filepath"
     "strconv"
 )
 
-// Enigma - Wrapper to Cryptographer and Hasher
-type Enigma struct {
-    h hash.Hash
-}
-
-func (self *Enigma) Hasher() hash.Hash {
-    if self.h == nil {
-        self.h = md5.New()
-    }
-
-    self.h.Reset()
-
-    return self.h
-}
-
-func (self *Enigma) Hash(Content []byte) string {
-    sum := self.Hasher().Sum(Content)
-
-    return fmt.Sprintf("%x", sum)
-}
-
-func (self *Enigma) HashString(Content string) string {
-    data := []byte(Content)
-
-    return self.Hash(data)
-}
-
-// Cache Driver
-type GenericCacheDriver struct {
-    StoragePath string
-    Compressed  bool
-    initialized bool
-    basePath    string
-}
-
-func (self *GenericCacheDriver) initialize() {
-    if self.initialized {
-        return
-    }
-
-    self.basePath, _ = filepath.Abs(self.StoragePath)
-    os.MkdirAll(self.basePath, 0755)
-}
-
-func (self *GenericCacheDriver) Load(Key string) []byte {
-    self.initialize()
-
-    actualPath   := filepath.Join(self.basePath, Key)
-    content, err := ioutil.ReadFile(actualPath)
-
-    log.Println("Reading from:", actualPath)
-
-    if err != nil {
-        return nil
-    }
-
-    if !self.Compressed {
-        log.Println("Read (uncompressed)")
-        return content
-    }
-
-    readingB := new(bytes.Buffer)
-    writingB := new(bytes.Buffer)
-
-    readingB.Write(content)
-
-    r, _ := gzip.NewReader(readingB)
-
-    defer r.Close()
-
-    io.Copy(writingB, r)
-    log.Println("Read (compressed)")
-
-    //ioutil.WriteFile("sample.jpg", writingB.Bytes(), 0644)
-
-    return writingB.Bytes()
-}
-
-func (self *GenericCacheDriver) Save(Key string, Content []byte) {
-    self.initialize()
-
-    actualPath := filepath.Join(self.basePath, Key)
-
-    log.Println("Writing to:", actualPath)
-
-    if !self.Compressed {
-        ioutil.WriteFile(actualPath, Content, 0644)
-        log.Println("Save (uncompressed)")
-        return
-    }
-
-    // Compress the data into the buffer.
-    b := new(bytes.Buffer)
-    w := gzip.NewWriter(b)
-
-    defer w.Close()
-
-    w.Write(Content)
-
-    ioutil.WriteFile(actualPath, b.Bytes(), 0644)
-    log.Println("Save (compressed)")
-}
-
 // Data Fetcher
 type Fetcher struct {
-    FileStorage   GenericCacheDriver
-    MetadataRepo  GenericCacheDriver
+    FileStorage   FileCacheDriver
+    MetadataRepo  FileCacheDriver
     Cryptographer Enigma
 }
 
-func (self *Fetcher) Fetch(url string) ([]byte, error) {
+func NewFetcher(
+    enigma           Enigma,
+    cachePath        string,
+    metadataPath     string,
+    forceCompression bool,
+) Fetcher {
+    contentDriver  := NewFileCacheDriver(enigma, cachePath,    true)
+    metadataDriver := NewFileCacheDriver(enigma, metadataPath, false)
+
+    fetcher := Fetcher{
+        FileStorage:   contentDriver,
+        MetadataRepo:  metadataDriver,
+        Cryptographer: enigma,
+    }
+
+    return fetcher
+}
+
+func (self *Fetcher) Fetch(url string) (Metadata, []byte) {
+    var metadata *Metadata
+    var content  []byte
+
     key := self.Cryptographer.HashString(url)
 
     log.Printf("Fetching the data from: %s\n", url)
     log.Printf("Cache Key: %s\n", key)
 
-    content := self.FileStorage.Load(key)
+    content  = self.FileStorage.Load(key)
+    metadata = self.loadMetadata(key)
 
-    if content != nil {
+    if content != nil && metadata != nil {
         log.Println("Cache: Hit")
-        return content, nil
+
+        return *metadata, content
     }
 
     content, contentType, contentLength, err := self.request(url)
@@ -146,11 +58,13 @@ func (self *Fetcher) Fetch(url string) ([]byte, error) {
     }
 
     self.FileStorage.Save(key, content)
-    self.saveMetadata(key, url, contentType, contentLength)
 
+    metadata = self.createMetadata(url, contentType, contentLength)
+
+    self.saveMetadata(key, metadata)
     log.Println("Cache: Missed")
 
-    return content, nil
+    return *metadata, content
 }
 
 func (self *Fetcher) request(url string) ([]byte, string, uint64, error) {
@@ -174,23 +88,40 @@ func (self *Fetcher) request(url string) ([]byte, string, uint64, error) {
     return content, contentType, contentLength, nil
 }
 
-func (self *Fetcher) saveMetadata(
-    Key  string,
+func (self *Fetcher) createMetadata(
     Url  string,
     Type string,
     Size uint64,
-) {
-    metadata := Metadata{
+) *Metadata {
+    return &Metadata{
         Url:  Url,
         Type: Type,
         Size: Size,
     }
+}
 
+func (self *Fetcher) loadMetadata(key string) *Metadata {
+    var metadata *Metadata
+
+    rawData := self.MetadataRepo.Load(key)
+    err     := json.Unmarshal(rawData, &metadata)
+
+    if err != nil {
+        log.Fatal(err)
+    }
+
+    return metadata
+}
+
+func (self *Fetcher) saveMetadata(
+    key      string,
+    metadata *Metadata,
+) {
     encoded, err := json.Marshal(metadata)
 
     if err != nil {
         log.Fatal(err)
     }
 
-    self.MetadataRepo.Save(Key, encoded)
+    self.MetadataRepo.Save(key, encoded)
 }

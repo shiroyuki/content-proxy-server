@@ -5,37 +5,40 @@ import (
     "net/http"
 )
 
-type Handler struct {
-    Fetcher Fetcher
-}
-
-func (self *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-    content, _ := self.Fetcher.Fetch("https://farm4.staticflickr.com/3930/15247727947_e3de85030a_k_d.jpg")
-
-    w.Write(content)
-}
-
 type Server struct {
-    Fetcher  Fetcher
-    Internal http.Server
+    Fetcher    Fetcher
+    Internal   http.Server
+    Compressed bool
 }
 
-func NewServer(address string, fetcher Fetcher) Server {
+func NewServer(
+    address      string,
+    cachePath    string,
+    metadataPath string,
+) Server {
+    var memory CacheDriver
+
+    memory  = CacheDriver(&InMemoryCacheDriver{})
+
+    enigma  := Enigma{}
+    fetcher := NewFetcher(enigma, cachePath, metadataPath, true)
+    router  := NewWebCore(memory, enigma, fetcher, true)
+
     internalServer := http.Server{
         Addr:    address,
-        Handler: &Handler{
-            Fetcher: fetcher,
-        },
+        Handler: &router,
     }
 
     app := Server{
-        Fetcher:  fetcher,
-        Internal: internalServer,
+        Fetcher:    fetcher,
+        Internal:   internalServer,
+        Compressed: true,
     }
 
     return app
 }
 
 func (self *Server) Listen() {
+    log.Println("Bind the web service to:", self.Internal.Addr)
     log.Fatal(self.Internal.ListenAndServe())
 }

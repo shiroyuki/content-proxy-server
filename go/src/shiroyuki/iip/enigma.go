@@ -68,7 +68,7 @@ func (self *Enigma) B64decode(content string) string {
     rawMessage, err := base64.StdEncoding.DecodeString(content)
 
     if err != nil {
-        log.Fatal(err)
+        log.Fatal("iip.enigma.Enigma.B64decode/error:", err)
     }
 
     return string(rawMessage)

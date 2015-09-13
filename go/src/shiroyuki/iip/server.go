@@ -40,5 +40,5 @@ func NewServer(
 
 func (self *Server) Listen() {
     log.Println("Bind the web service to:", self.Internal.Addr)
-    log.Fatal(self.Internal.ListenAndServe())
+    log.Fatal("iip.server.Server.Listen/error:", self.Internal.ListenAndServe())
 }

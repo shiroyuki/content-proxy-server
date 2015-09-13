@@ -107,7 +107,7 @@ func (self *Fetcher) loadMetadata(key string) *Metadata {
     err     := json.Unmarshal(rawData, &metadata)
 
     if err != nil {
-        log.Fatal(err)
+        log.Fatal("iip.fetcher.Fetcher.loadMetadata/error:", err)
     }
 
     return metadata
@@ -120,7 +120,7 @@ func (self *Fetcher) saveMetadata(
     encoded, err := json.Marshal(metadata)
 
     if err != nil {
-        log.Fatal(err)
+        log.Fatal("iip.fetcher.Fetcher.saveMetadata/error:", err)
     }
 
     self.MetadataRepo.Save(key, encoded)

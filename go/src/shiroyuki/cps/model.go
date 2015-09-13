@@ -1,4 +1,4 @@
-package iip
+package cps
 
 import "time"
 import "gopkg.in/mgo.v2/bson"

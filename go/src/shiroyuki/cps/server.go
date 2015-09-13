@@ -1,4 +1,4 @@
-package iip
+package cps
 
 import (
     "log"
@@ -40,5 +40,5 @@ func NewServer(
 
 func (self *Server) Listen() {
     log.Println("Bind the web service to:", self.Internal.Addr)
-    log.Fatal("iip.server.Server.Listen/error:", self.Internal.ListenAndServe())
+    log.Fatal("cps.server.Server.Listen/error:", self.Internal.ListenAndServe())
 }

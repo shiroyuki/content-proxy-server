@@ -1,4 +1,4 @@
-package iip
+package cps
 
 import (
     "fmt"
@@ -32,7 +32,7 @@ func (self *WebCore) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
     if !routePattern.MatchString(requestPath) {
         w.WriteHeader(404)
-        log.Println("iip.WebCore.ServeHTTP: Responded HTTP 404")
+        log.Println("cps.WebCore.ServeHTTP: Responded HTTP 404")
         return // TODO HTTP 400
     }
 
@@ -54,7 +54,7 @@ func (self *WebCore) ServeHTTP(w http.ResponseWriter, r *http.Request) {
     if &kind != nil && content != nil {
         self.write(w, kind, content)
         log.Println("Used in-memory cache.")
-        log.Println("iip.WebCore.ServeHTTP: Responded HTTP 200")
+        log.Println("cps.WebCore.ServeHTTP: Responded HTTP 200")
 
         return
     }
@@ -66,7 +66,7 @@ func (self *WebCore) ServeHTTP(w http.ResponseWriter, r *http.Request) {
     self.Cache.Save(contentTypeCacheKey, []byte(metadata.Type))
     self.Cache.Save(contentDataCacheKey, content)
     log.Println("Used actual data.")
-    log.Println("iip.WebCore.ServeHTTP: Responded HTTP 200")
+    log.Println("cps.WebCore.ServeHTTP: Responded HTTP 200")
 }
 
 func (self *WebCore) write(w http.ResponseWriter, kind string, content []byte) {

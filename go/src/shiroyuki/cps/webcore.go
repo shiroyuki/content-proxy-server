@@ -5,17 +5,23 @@ import (
     "log"
     "net/http"
     "regexp"
+    yotsuba "github.com/shiroyuki/yotsuba-go"
 )
 
 type WebCore struct { // implements http.Handler
-    Cache      CacheDriver
-    Enigma     Enigma
-    Fetcher    Fetcher
+    Cache      *yotsuba.CacheDriver
+    Enigma     *yotsuba.Enigma
+    Fetcher    *Fetcher
     Compressed bool
 }
 
-func NewWebCore(cache CacheDriver, enigma Enigma, fetcher Fetcher, compressed bool) WebCore {
-    return WebCore{
+func NewWebCore(
+    cache      *yotsuba.CacheDriver,
+    enigma     *yotsuba.Enigma,
+    fetcher    *Fetcher,
+    compressed bool,
+) *WebCore {
+    return &WebCore{
         Cache:      cache,
         Enigma:     enigma,
         Fetcher:    fetcher,
@@ -48,8 +54,8 @@ func (self *WebCore) ServeHTTP(w http.ResponseWriter, r *http.Request) {
     contentTypeCacheKey := "ct:"   + commonCacheKey
     contentDataCacheKey := "data:" + commonCacheKey
 
-    kind    = string(self.Cache.Load(contentTypeCacheKey))
-    content = self.Cache.Load(contentDataCacheKey)
+    kind    = string((*self.Cache).Load(contentTypeCacheKey))
+    content = (*self.Cache).Load(contentDataCacheKey)
 
     if &kind != nil && content != nil {
         self.write(w, kind, content)
@@ -63,8 +69,8 @@ func (self *WebCore) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
     self.write(w, metadata.Type, content)
 
-    self.Cache.Save(contentTypeCacheKey, []byte(metadata.Type))
-    self.Cache.Save(contentDataCacheKey, content)
+    (*self.Cache).Save(contentTypeCacheKey, []byte(metadata.Type))
+    (*self.Cache).Save(contentDataCacheKey, content)
     log.Println("Used actual data.")
     log.Println("cps.WebCore.ServeHTTP: Responded HTTP 200")
 }

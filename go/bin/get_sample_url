@@ -2,15 +2,18 @@
 
 import base64
 import json
+import sys
 
 source_url = "https://farm4.staticflickr.com/3930/15247727947_e3de85030a_k_d.jpg"
 specification = {
     "width":   720,
     "quality": 0.8,
 }
-final_url  = "/{source}/{spec}".format(
+final_url  = "http://127.0.0.1:9500/i/{source}/{spec}".format(
     source = base64.b64encode(source_url),
     spec   = base64.b64encode(json.dumps(specification))
 )
 
-print("Sample URL: {}".format(final_url))
+# print(final_url)
+sys.stdout.write(final_url)
+sys.stdout.flush()

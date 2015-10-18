@@ -1,44 +1,50 @@
 package cps
 
-import (
-    "log"
-    "net/http"
-)
+import yotsuba "github.com/shiroyuki/yotsuba-go"
+import tori    "github.com/shiroyuki/tori-go"
 
-type Server struct {
-    Fetcher    Fetcher
-    Internal   http.Server
-    Compressed bool
-}
-
-func NewServer(
+func StartService(
     address      string,
     cachePath    string,
     metadataPath string,
-) Server {
-    var memory CacheDriver
+    debugMode    bool,
+) {
+    cryptographer := yotsuba.Enigma{}
 
-    memory  = CacheDriver(&InMemoryCacheDriver{})
+    memoryCacheDriver := yotsuba.NewInMemoryCacheDriver(&cryptographer, !debugMode)
 
-    enigma  := Enigma{}
-    fetcher := NewFetcher(enigma, cachePath, metadataPath, true)
-    router  := NewWebCore(memory, enigma, fetcher, true)
+    cacheDriver    := yotsuba.CacheDriver(memoryCacheDriver)
+    fetcherService := NewFetcher(
+        &cryptographer,
+        cachePath,
+        metadataPath,
+        true,
+    )
 
-    internalServer := http.Server{
-        Addr:    address,
-        Handler: &router,
+    app := Application{
+        CacheDriver:    cacheDriver,
+        Cryptographer:  cryptographer,
+        FetcherService: fetcherService,
     }
 
-    app := Server{
-        Fetcher:    fetcher,
-        Internal:   internalServer,
-        Compressed: true,
-    }
+    core := tori.NewSimpleCore()
 
-    return app
-}
+    core.Router.DebugMode              = debugMode
+    core.Router.PriorityList.DebugMode = debugMode
 
-func (self *Server) Listen() {
-    log.Println("Bind the web service to:", self.Internal.Addr)
-    log.Fatal("cps.server.Server.Listen/error:", self.Internal.ListenAndServe())
+    core.Router.OnGet(
+        "image-default",
+        "/i/<destination>",
+        app.HandleImage,
+        true,
+    )
+
+    core.Router.OnGet(
+        "image-default",
+        "/i/<destination>/<spec>",
+        app.HandleImage,
+        true,
+    )
+
+    core.Listen(&address)
 }

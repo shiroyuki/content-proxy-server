@@ -10,10 +10,14 @@ build: install_deps compile
 	@echo "Done"
 
 install_deps:
-	@echo "Installing dependencies..."
+	@echo "Installing/updating dependencies..."
 	@mkdir -p ${GOPATH_DEPS}
 	@${GO_GET} gopkg.in/mgo.v2
 	@${GO_GET} github.com/shiroyuki/passerine-go
+	@${GO_GET} github.com/shiroyuki/tameshigiri
+	@${GO_GET} github.com/shiroyuki/yotsuba-go
+	@${GO_GET} github.com/shiroyuki/re
+	@${GO_GET} -u github.com/shiroyuki/tori-go
 
 compile:
 	@echo "Compiling..."
@@ -27,3 +31,6 @@ doc_web: install_deps
 
 clean:
 	rm main
+
+quick_test:
+	time curl -v `bin/get_sample_url` > sample.jpg

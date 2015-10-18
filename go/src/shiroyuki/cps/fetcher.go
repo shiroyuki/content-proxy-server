@@ -6,17 +6,18 @@ import (
     "net/http"
     "log"
     "strconv"
+    yotsuba "github.com/shiroyuki/yotsuba-go"
 )
 
 // Data Fetcher
 type Fetcher struct {
     FileStorage   FileCacheDriver
     MetadataRepo  FileCacheDriver
-    Cryptographer Enigma
+    Cryptographer *yotsuba.Enigma
 }
 
 func NewFetcher(
-    enigma           Enigma,
+    enigma           *yotsuba.Enigma,
     cachePath        string,
     metadataPath     string,
     forceCompression bool,
@@ -106,8 +107,14 @@ func (self *Fetcher) loadMetadata(key string) *Metadata {
     rawData := self.MetadataRepo.Load(key)
     err     := json.Unmarshal(rawData, &metadata)
 
+    if len(rawData) == 0 {
+        return nil
+    }
+
+    log.Println(rawData)
+
     if err != nil {
-        log.Fatal("cps.fetcher.Fetcher.loadMetadata/error:", err)
+        log.Fatal("cps.fetcher.Fetcher.loadMetadata/error: ", err)
     }
 
     return metadata
@@ -117,10 +124,12 @@ func (self *Fetcher) saveMetadata(
     key      string,
     metadata *Metadata,
 ) {
+    log.Println(*metadata)
+
     encoded, err := json.Marshal(metadata)
 
     if err != nil {
-        log.Fatal("cps.fetcher.Fetcher.saveMetadata/error:", err)
+        log.Fatal("cps.fetcher.Fetcher.saveMetadata/error: ", err)
     }
 
     self.MetadataRepo.Save(key, encoded)

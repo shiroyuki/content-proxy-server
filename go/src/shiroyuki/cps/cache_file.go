@@ -4,18 +4,19 @@ import "io/ioutil"
 import "log"
 import "os"
 import "path/filepath"
+import yotsuba "github.com/shiroyuki/yotsuba-go"
 
 // Cache Driver
 type FileCacheDriver struct {
-    CacheDriver
+    yotsuba.CacheDriver
 
-    Enigma      Enigma
+    Enigma      *yotsuba.Enigma
     StoragePath string
     Compressed  bool
     basePath    string
 }
 
-func NewFileCacheDriver(enigma Enigma, storagePath string, compressed bool) FileCacheDriver {
+func NewFileCacheDriver(enigma *yotsuba.Enigma, storagePath string, compressed bool) FileCacheDriver {
     fcd := FileCacheDriver{
         Enigma:      enigma,
         StoragePath: storagePath,

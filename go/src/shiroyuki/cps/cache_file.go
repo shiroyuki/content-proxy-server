@@ -1,7 +1,7 @@
 package cps
 
 import "io/ioutil"
-import "log"
+// import "log"
 import "os"
 import "path/filepath"
 import yotsuba "github.com/shiroyuki/yotsuba-go"
@@ -51,7 +51,7 @@ func (self *FileCacheDriver) Load(key string) []byte {
 func (self *FileCacheDriver) Save(key string, content []byte) {
     actualPath := filepath.Join(self.basePath, key)
 
-    log.Println("Writing to:", actualPath)
+    // log.Println("Writing to:", actualPath)
 
     if !self.Compressed {
         ioutil.WriteFile(actualPath, content, 0644)

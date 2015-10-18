@@ -1,6 +1,6 @@
 package cps
 
-import "log"
+// import "log"
 import yotsuba "github.com/shiroyuki/yotsuba-go"
 import tori    "github.com/shiroyuki/tori-go"
 
@@ -29,17 +29,14 @@ func (self *Application) HandleImage (h *tori.Handler) {
     kind    = string(self.CacheDriver.Load(contentTypeCacheKey))
     content = self.CacheDriver.Load(contentDataCacheKey)
 
+    // Respond with the immediate cache.
     if &kind != nil && content != nil {
         self.respond(h, kind, &content)
-
-        log.Println("Used in-memory cache.")
-        log.Println("cps.WebCore.ServeHTTP: Responded HTTP 200")
-
-        log.Println("D-2")
 
         return
     }
 
+    // Respond with the data from the fetcher service.
     metadata, content = self.FetcherService.Fetch(commonCacheKey)
 
     self.respond(h, metadata.Type, &content)

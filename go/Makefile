@@ -33,4 +33,4 @@ clean:
 	rm main
 
 quick_test:
-	time curl -v `bin/get_sample_url` > sample.jpg
+	time curl `bin/get_sample_url` > sample.jpg

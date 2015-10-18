@@ -40,14 +40,14 @@ func (self *Fetcher) Fetch(url string) (Metadata, []byte) {
 
     key := self.Cryptographer.HashString(url)
 
-    log.Printf("Fetching the data from: %s\n", url)
-    log.Printf("Cache Key: %s\n", key)
+    // log.Printf("Fetching the data from: %s\n", url)
+    // log.Printf("Cache Key: %s\n", key)
 
     content  = self.FileStorage.Load(key)
     metadata = self.loadMetadata(key)
 
     if content != nil && metadata != nil {
-        log.Println("Cache: Hit")
+        // log.Println("Cache: Hit")
 
         return *metadata, content
     }
@@ -63,7 +63,7 @@ func (self *Fetcher) Fetch(url string) (Metadata, []byte) {
     metadata = self.createMetadata(url, contentType, contentLength)
 
     self.saveMetadata(key, metadata)
-    log.Println("Cache: Missed")
+    // log.Println("Cache: Missed")
 
     return *metadata, content
 }
@@ -111,8 +111,6 @@ func (self *Fetcher) loadMetadata(key string) *Metadata {
         return nil
     }
 
-    log.Println(rawData)
-
     if err != nil {
         log.Fatal("cps.fetcher.Fetcher.loadMetadata/error: ", err)
     }
@@ -124,8 +122,6 @@ func (self *Fetcher) saveMetadata(
     key      string,
     metadata *Metadata,
 ) {
-    log.Println(*metadata)
-
     encoded, err := json.Marshal(metadata)
 
     if err != nil {
